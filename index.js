@@ -1,100 +1,69 @@
-// app.js - Versão com logs detalhados
-console.log('🔵 [APP] Iniciando carregamento do app.js');
+// index.js - Ponto de entrada com logs
+console.log('🚀 [INDEX] Iniciando index.js');
+console.log('📂 [INDEX] Diretório atual:', __dirname);
+console.log('📂 [INDEX] Arquivos no diretório:', require('fs').readdirSync(__dirname).join(', '));
+
+// Log de variáveis de ambiente
+console.log('🔑 [INDEX] Verificando variáveis de ambiente:');
+console.log('  - DB_CONCT definida?', !!process.env.DB_CONCT);
+console.log('  - DB_CONCT começa com:', process.env.DB_CONCT ? process.env.DB_CONCT.substring(0, 30) + '...' : 'NÃO DEFINIDA');
+console.log('  - PORT:', process.env.PORT || 'não definida (usando 3000)');
+console.log('  - NODE_ENV:', process.env.NODE_ENV || 'não definido');
+
+// Captura erros
+process.on('uncaughtException', (err) => {
+    console.error('💥 [INDEX] ERRO NÃO CAPTURADO (síncrono):', err);
+    console.error('💥 [INDEX] Stack:', err.stack);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 [INDEX] ERRO NÃO CAPTURADO (assíncrono):', reason);
+    console.error('💥 [INDEX] Promise:', promise);
+    process.exit(1);
+});
+
+console.log('🔵 [INDEX] PASSO 1: Tentando importar app...');
 
 try {
-    console.log('🔵 [APP] Importando dependências...');
-    const path = require('path');
-    const cors = require('cors');
-    const mongoose = require('mongoose');
-    const express = require('express');
-    const bodyParser = require('body-parser');
-    console.log('✅ [APP] Dependências importadas com sucesso');
-
-    console.log('🔵 [APP] Importando rotas...');
-    const alunoRoute = require('./route/alunoRoute');
-    console.log('✅ [APP] Rota aluno importada');
+    console.log('🔵 [INDEX] Importando ./app...');
+    const app = require('./app');
+    console.log('✅ [INDEX] App importado com sucesso');
     
-    const grupoRoute = require('./route/grupoRoute');
-    console.log('✅ [APP] Rota grupo importada');
-
-    console.log('🔵 [APP] Criando app Express...');
-    const app = express();
-    console.log('✅ [APP] App Express criado');
-
-    console.log('🔵 [APP] Configurando middlewares...');
-    app.use(bodyParser.json({ limit: '5mb' }));
-    app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
-    app.use(express.json());
-    console.log('✅ [APP] BodyParser configurado');
-
-    console.log('🔵 [APP] Configurando CORS...');
-    app.use(cors({
-        origin: "https://grupo-de-estudos.vercel.app"
-    }));
-    console.log('✅ [APP] CORS configurado');
-
-    console.log('🔵 [APP] Configurando função connectMongo...');
-    async function connectMongo() {
-        console.log('🔄 [MONGO] Verificando conexão...');
-        if (mongoose.connection.readyState === 1) {
-            console.log('✅ [MONGO] Já conectado');
-            return;
-        }
-        console.log('🔄 [MONGO] Tentando conectar...');
-        console.log('🔄 [MONGO] DB_CONCT existe?', !!process.env.DB_CONCT);
-        if (!process.env.DB_CONCT) {
-            console.error('❌ [MONGO] DB_CONCT NÃO DEFINIDA!');
-            throw new Error('Variável DB_CONCT não definida');
-        }
-        await mongoose.connect(process.env.DB_CONCT);
-        console.log("✅ [MONGO] Mongo conectado com sucesso");
-    }
-    console.log('✅ [APP] Função connectMongo definida');
-
-    console.log('🔵 [APP] Configurando middleware de conexão...');
-    app.use(async (req, res, next) => {
-        console.log(`🔄 [MIDDLEWARE] Requisição recebida: ${req.method} ${req.path}`);
-        try {
-            await connectMongo();
-            console.log('✅ [MIDDLEWARE] Conexão OK, continuando...');
-            next();
-        } catch (error) {
-            console.error('❌ [MIDDLEWARE] Erro na conexão:', error);
-            console.error('❌ [MIDDLEWARE] Stack:', error.stack);
-            return res.status(500).json({
-                erro: "Erro conexão banco",
-                detalhe: error.message
-            });
-        }
-    });
-    console.log('✅ [APP] Middleware de conexão configurado');
-
-    console.log('🔵 [APP] Configurando rotas...');
-    app.use('/aluno', alunoRoute);
-    console.log('✅ [APP] Rota /aluno configurada');
+    const PORT = process.env.PORT || 3000;
+    console.log(`🔵 [INDEX] PASSO 2: Iniciando servidor na porta ${PORT}`);
     
-    app.use('/grupo', grupoRoute);
-    console.log('✅ [APP] Rota /grupo configurada');
-    console.log('✅ [APP] Rotas configuradas');
-
-    console.log('🔵 [APP] Configurando arquivos estáticos...');
-    app.use(express.static('public'));
-    console.log('✅ [APP] Arquivos estáticos configurados');
-
-    console.log('🔵 [APP] Configurando rota raiz...');
-    app.get('/', (req, res) => {
-        console.log('🔄 [ROTA] Requisição para /');
-        res.sendFile('index.html', { root: 'public' });
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ [INDEX] Servidor rodando na porta ${PORT}`);
+        console.log(`✅ [INDEX] Ambiente: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`✅ [INDEX] Servidor pronto para receber requisições`);
     });
-    console.log('✅ [APP] Rota raiz configurada');
-
-    console.log('✅ [APP] App configurado com sucesso!');
-    module.exports = app;
-    console.log('✅ [APP] Exportação concluída');
-
+    
+    server.timeout = 30000;
+    console.log(`✅ [INDEX] Timeout do servidor configurado para 30s`);
+    
+    server.on('error', (err) => {
+        console.error('💥 [INDEX] Erro no servidor:', err);
+        console.error('💥 [INDEX] Stack:', err.stack);
+    });
+    
+    server.on('listening', () => {
+        console.log('✅ [INDEX] Evento "listening" disparado');
+    });
+    
+    console.log('✅ [INDEX] Servidor iniciado com sucesso');
+    
 } catch (error) {
-    console.error('❌ [APP] ERRO FATAL durante configuração:', error);
-    console.error('❌ [APP] Stack:', error.stack);
-    // Re-throw para o index.js capturar
-    throw error;
+    console.error('💥 [INDEX] ERRO AO IMPORTAR APP:', error);
+    console.error('💥 [INDEX] Mensagem:', error.message);
+    console.error('💥 [INDEX] Stack:', error.stack);
+    console.error('💥 [INDEX] Nome do erro:', error.name);
+    
+    if (error.code === 'MODULE_NOT_FOUND') {
+        console.error('💥 [INDEX] Módulo não encontrado:', error.requireStack);
+    }
+    
+    process.exit(1);
 }
+
+console.log('🔵 [INDEX] Index.js finalizado com sucesso');
