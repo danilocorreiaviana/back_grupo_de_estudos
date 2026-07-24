@@ -1,155 +1,317 @@
 const alunoRoute = require('express').Router();
-const express = require('express');
 const aluno = require('../model/alunoModel');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs')
+const bcrypt = require('bcryptjs');
 
-//função que verifica o token pelo body
+
+// Middleware que verifica JWT
 const verificarJWT = (req, res, next) => {
+
     const token = req.body.token;
+
     if (!token) {
-        res.json({logado: false, mensagem: 'Token não foi enviado.'});
-    }else{
+        return res.json({
+            logado: false,
+            mensagem: 'Token não foi enviado.'
+        });
+    }
+
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+
         if (err) {
-            res.json({locado: false, mensagem: 'Falha na autenticação'});
+            return res.json({
+                logado: false,
+                mensagem: 'Falha na autenticação'
+            });
         }
+
         next();
     });
+};
+
+
+// Cadastro aluno
+alunoRoute.post('/aluno/cadastro', async (req, res) => {
+
+    try {
+
+        const { nome, email, senha, foto } = req.body;
+
+        if (
+            !nome ||
+            !email ||
+            !senha
+        ) {
+            return res.json({
+                mensagem: 'Erro! Alguns campos não foram definidos!'
+            });
+        }
+
+
+        const existeAluno = await aluno.findOne({ email });
+
+        if (existeAluno) {
+            return res.json({
+                mensagem: 'Erro! Email já cadastrado!'
+            });
+        }
+
+
+        const senhaCriptografada = await bcrypt.hash(senha, 10);
+
+
+        await aluno.create({
+            nome,
+            email,
+            senha: senhaCriptografada,
+            foto
+        });
+
+
+        return res.json({
+            mensagem: 'Aluno cadastrado com sucesso :)'
+        });
+
+
+    } catch (erro) {
+
+        console.log("Erro cadastro:", erro);
+
+        return res.status(500).json({
+            mensagem: 'Erro no cadastro do aluno :('
+        });
     }
-   
-}
+});
 
 
-//rota POST para cadastrar o aluno
-alunoRoute.post('/aluno/cadastro/', async(req, res) => {
-    try{
-        //recuperando informações do body
-        const {nome,email,senha,foto} = req.body
-        const senhac = await bcrypt.hash(senha, 10)
 
-        //verificando campos
-        if(nome === undefined || email === undefined|| senha == undefined|| nome === "" || email === ""|| senha == ""){
-            res.json({mensagem: 'Erro! Alguns campos não foram definidos!'});  
-        }else{
+// LOGIN
+alunoRoute.post('/aluno/login', async (req, res) => {
 
-            if(await aluno.findOne({email})!=null){ //verifica se o email já existe no banco
-                res.json({mensagem: 'Erro! Email já cadastrado!'}); 
-            }else{
-                //se o email não existir no banco, o cadastro é feito
-                await aluno.create({
-                    nome,
-                    email,
-                    senha: senhac,
-                    foto
-                });
+    try {
 
-                res.json({mensagem: 'Aluno cadastrado com sucesso :)'})
+        const { email, senha } = req.body;
+
+
+        if (!email || !senha) {
+            return res.status(400).json({
+                error: "Email e senha obrigatórios"
+            });
+        }
+
+
+        const user = await aluno.findOne({ email });
+
+
+        if (!user) {
+            return res.json({
+                error: "Usuário não encontrado!"
+            });
+        }
+
+
+        const senhaValida = await bcrypt.compare(
+            senha,
+            user.senha
+        );
+
+
+        if (!senhaValida) {
+            return res.json({
+                status: "error",
+                error: "Senha inválida!"
+            });
+        }
+
+
+
+        const token = jwt.sign(
+            {
+                email: user.email
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: 864000
             }
-        }
+        );
 
-    }catch(erro){
-        res.json({mensagem: 'Erro no cadastro do aluno :('})
-        console.log(erro)
+
+        return res.status(200).json({
+
+            status: "ok",
+
+            data: token,
+
+            body: {
+                id: user._id,
+                nome: user.nome,
+                email: user.email,
+                foto: user.foto
+            }
+
+        });
+
+
+
+    } catch(error) {
+
+        console.log("Erro login:", error);
+
+
+        return res.status(500).json({
+            error: "Erro interno no servidor"
+        });
+
     }
+
 });
 
 
 
-//rota POST para validar o login do aluno
-alunoRoute.post("/aluno/login", async (req, res) => {
-    const {email, senha} = req.body;
-  
-    const user = await aluno.findOne({ email });
-
-    if (!user) { //verifica usuário
-      return res.json({ error: "Usuário não encontrado!" });
-    }
-    if (await bcrypt.compare(senha, user.senha)) { //compara as senhas 
-      const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {expiresIn: 864000});
-  
-      if (res.status(201)) {
-        const body = {
-            id: user._id,
-            nome:user.nome, 
-            email: user.email, 
-            foto: user.foto
-        }
-
-        return res.json({ status: "ok", data: token, body: body});
-    
-      } else {
-        return res.json({ error: "error" });
-      }
-    }
-    res.json({ status: "error", error: "Senha inválida!" });
-  });
-
-
-//rota PUT - atualizar ou deletar foto
+// Atualizar foto
 alunoRoute.put('/aluno/update-photo/id=:id', verificarJWT, async (req, res) => {
+
     try {
-        //recupera informações
-        const {foto, token} = req.body
 
-        //verifica informações
-        if (await aluno.findOneAndUpdate({"_id": req.params.id}, req.body, {new:true}))
-            res.json({mensagem: 'Foto atualizada com sucesso!', foto: foto});
-    } catch (error) {
-        res.json({mensagem: 'Erro na atualização!'});
-    }
-});
-
-// rota DELETE - remove o aluno, ou seja a conta
-alunoRoute.delete('/aluno/delete/id=:id', verificarJWT, async (req, res) => {
-    try {
-        const {token} = req.body
-
-        if(await aluno.findOne({"_id": req.params.id})!=null){
-            await aluno.deleteOne({"_id": req.params.id});
-            res.json({mensagem: 'Aluno removido com sucesso!'});
-          }else{
-            res.json({mensagem: 'Erro ao remover! Aluno não existe!'});
-          } 
-    } catch (error) {
-        res.json({mensagem: 'Erro na exclusão!'});
-    }
-});
+        const { foto } = req.body;
 
 
-// rota DELETE - remove o aluno, ou seja a conta (TESTES)
-alunoRoute.delete('/delete-aluno/id=:id', async (req, res) => {
-    try {
-        if(await aluno.findOne({"_id": req.params.id})!=null){
-            await aluno.deleteOne({"_id": req.params.id});
-            res.json({mensagem: 'Aluno removido com sucesso!'});
-          }else{
-            res.json({mensagem: 'Erro ao remover! Aluno não existe!'});
-          } 
-    } catch (error) {
-        res.json({mensagem: 'Erro na exclusão!'});
-    }
-});
+        const atualizado = await aluno.findOneAndUpdate(
+            {
+                _id: req.params.id
+            },
+            {
+                foto
+            },
+            {
+                new:true
+            }
+        );
 
 
-//rota PUT - atualizar senha
-alunoRoute.put('/aluno/update-password/', async (req, res) => {
-    try {
-        //recupera informações
-        const {email, senha} = req.body
-        const senhac = await bcrypt.hash(senha, 10)
-
-        //verifica informações
-        if (await aluno.findOneAndUpdate({"email": email}, {"senha": senhac}, {new:true}))
-            res.json({mensagem: 'Senha atualizada com sucesso!'})
-        else{
-            res.json({mensagem: 'Falha ao atualizar senha! Email não encontrado!'})
+        if (!atualizado) {
+            return res.json({
+                mensagem:"Aluno não encontrado"
+            });
         }
-    } catch (error) {
-        res.json({mensagem: 'Erro na atualização!'});
+
+
+        return res.json({
+            mensagem:'Foto atualizada com sucesso!',
+            foto: atualizado.foto
+        });
+
+
+    } catch(error){
+
+        console.log(error);
+
+        return res.status(500).json({
+            mensagem:'Erro na atualização!'
+        });
     }
+
 });
 
+
+
+// Deletar aluno
+alunoRoute.delete('/aluno/delete/id=:id', verificarJWT, async (req,res)=>{
+
+    try {
+
+
+        const alunoExiste = await aluno.findOne({
+            _id:req.params.id
+        });
+
+
+        if(!alunoExiste){
+
+            return res.json({
+                mensagem:'Aluno não existe!'
+            });
+
+        }
+
+
+        await aluno.deleteOne({
+            _id:req.params.id
+        });
+
+
+        return res.json({
+            mensagem:'Aluno removido com sucesso!'
+        });
+
+
+
+    }catch(error){
+
+        console.log(error);
+
+        return res.status(500).json({
+            mensagem:'Erro na exclusão!'
+        });
+
+    }
+
+});
+
+
+
+// Atualizar senha
+alunoRoute.put('/aluno/update-password', async(req,res)=>{
+
+    try{
+
+        const {email, senha} = req.body;
+
+
+        const senhaCriptografada = await bcrypt.hash(
+            senha,
+            10
+        );
+
+
+        const atualizado = await aluno.findOneAndUpdate(
+            {
+                email
+            },
+            {
+                senha: senhaCriptografada
+            },
+            {
+                new:true
+            }
+        );
+
+
+        if(!atualizado){
+
+            return res.json({
+                mensagem:'Email não encontrado!'
+            });
+
+        }
+
+
+        return res.json({
+            mensagem:'Senha atualizada com sucesso!'
+        });
+
+
+    }catch(error){
+
+        console.log(error);
+
+        return res.status(500).json({
+            mensagem:'Erro na atualização!'
+        });
+
+    }
+
+});
 
 
 module.exports = alunoRoute;
