@@ -10,43 +10,48 @@ const grupoRoute = require('../route/grupoRoute');
 const app = express();
 
 
-let cachedConnection = global.mongooseConnection;
-
-if (!cachedConnection) {
-    cachedConnection = global.mongooseConnection = {
-        conn: null,
-        promise: null
-    };
-}
-
-async function connectMongo() {
-    if (cachedConnection.conn) {
-        return cachedConnection.conn;
-    }
-
-    if (!cachedConnection.promise) {
-        cachedConnection.promise = mongoose.connect(process.env.DB_CONCT)
-            .then((mongooseInstance) => {
-                console.log('Mongo conectado');
-                return mongooseInstance;
-            })
-            .catch((err) => {
-                console.log('Erro Mongo:', err);
-                throw err;
-            });
-    }
-
-    cachedConnection.conn = await cachedConnection.promise;
-
-    return cachedConnection.conn;
-}
-
-connectMongo();
-
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
 app.use(express.json());
-app.use(cors());
+
+app.use(cors({
+    origin: "https://grupo-de-estudos.vercel.app"
+}));
+
+app.use(express.json());
+
+
+async function connectMongo(){
+
+    if(mongoose.connection.readyState === 1){
+        return;
+    }
+
+    await mongoose.connect(process.env.DB_CONCT);
+
+    console.log("Mongo conectado");
+}
+
+
+app.use(async(req,res,next)=>{
+
+    try{
+
+        await connectMongo();
+
+        next();
+
+    }catch(error){
+
+        console.log("Erro Mongo middleware:", error);
+
+        return res.status(500).json({
+            erro:"Erro conexão banco"
+        });
+    }
+
+});
+
 
 
 // Rotas
