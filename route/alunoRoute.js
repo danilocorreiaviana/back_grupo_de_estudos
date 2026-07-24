@@ -25,9 +25,8 @@ const verificarJWT = (req, res, next) => {
     });
 };
 
-// ✅ CORRIGIDO: removido o /aluno de todas as rotas
 // Cadastro aluno
-alunoRoute.post('/cadastro', async (req, res) => {
+alunoRoute.post('/aluno/cadastro', async (req, res) => {
     try {
         const { nome, email, senha, foto } = req.body;
 
@@ -66,9 +65,8 @@ alunoRoute.post('/cadastro', async (req, res) => {
     }
 });
 
-// ✅ CORRIGIDO: removido o /aluno
 // LOGIN
-alunoRoute.post('/login', async (req, res) => {
+alunoRoute.post('/aluno/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
 
@@ -120,9 +118,8 @@ alunoRoute.post('/login', async (req, res) => {
     }
 });
 
-// ✅ CORRIGIDO: removido o /aluno
 // Atualizar foto
-alunoRoute.put('/update-photo/id=:id', verificarJWT, async (req, res) => {
+alunoRoute.put('/aluno/update-photo/id=:id', verificarJWT, async (req, res) => {
     try {
         const { foto } = req.body;
 
@@ -151,9 +148,8 @@ alunoRoute.put('/update-photo/id=:id', verificarJWT, async (req, res) => {
     }
 });
 
-// ✅ CORRIGIDO: removido o /aluno
 // Deletar aluno
-alunoRoute.delete('/delete/id=:id', verificarJWT, async (req, res) => {
+alunoRoute.delete('/aluno/delete/id=:id', verificarJWT, async (req, res) => {
     try {
         const alunoExiste = await aluno.findOne({
             _id: req.params.id
@@ -181,9 +177,8 @@ alunoRoute.delete('/delete/id=:id', verificarJWT, async (req, res) => {
     }
 });
 
-// ✅ CORRIGIDO: removido o /aluno
 // Atualizar senha
-alunoRoute.put('/update-password', async (req, res) => {
+alunoRoute.put('/aluno/update-password', async (req, res) => {
     try {
         const { email, senha } = req.body;
 
