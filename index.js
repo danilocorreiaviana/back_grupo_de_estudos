@@ -19,7 +19,11 @@ if (!mongoose.connections[0].readyState) {
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: "https://grupo-de-estudos.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 // Rotas
 app.use(alunoRoute);
