@@ -5,8 +5,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 // CORRIGIDO - verifique se os arquivos exportam com module.exports
-const alunoRoute = require('./route/alunoRoute');
-const grupoRoute = require('./route/grupoRoute');
+const alunoRoute = require('../route/alunoRoute');
+const grupoRoute = require('../route/grupoRoute');
 
 const app = express();
 
