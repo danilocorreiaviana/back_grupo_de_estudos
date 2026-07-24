@@ -62,8 +62,8 @@ app.get('/', (req, res) => {
     });
 });
 
-app.use(alunoRoute);
-app.use(grupoRoute);
+app.use("/", alunoRoute);
+app.use("/", grupoRoute); 
 
 // Arquivos estáticos
 app.use(express.static('public'));
