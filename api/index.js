@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const express = require('express');
 const bodyParser = require('body-parser');
 
-const alunoRoute = require('./route/alunoRoute');
-const grupoRoute = require('./route/grupoRoute');
+const alunoRoute = require('../route/alunoRoute');
+const grupoRoute = require('../route/grupoRoute');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
