@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node api/index.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/alencarol/grupo-de-estudos-API.git"
