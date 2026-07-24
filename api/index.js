@@ -4,12 +4,13 @@ const mongoose = require('mongoose');
 const express = require('express');
 const bodyParser = require('body-parser');
 
-// CORRIGIDO - verifique se os arquivos exportam com module.exports
-const alunoRoute = require('../route/alunoRoute');
-const grupoRoute = require('../route/grupoRoute');
+const alunoRoute = require('./route/alunoRoute');
+const grupoRoute = require('./route/grupoRoute');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
+// Middlewares
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
 app.use(express.json());
@@ -18,8 +19,7 @@ app.use(cors({
     origin: "https://grupo-de-estudos.vercel.app"
 }));
 
-// Removeu o app.use(express.json()) duplicado
-
+// Função de conexão MongoDB
 async function connectMongo() {
     if (mongoose.connection.readyState === 1) {
         return;
@@ -28,7 +28,12 @@ async function connectMongo() {
     console.log("Mongo conectado");
 }
 
+// Middleware de conexão
 app.use(async (req, res, next) => {
+    if (req.path === '/health') {
+        return next();
+    }
+    
     try {
         await connectMongo();
         next();
@@ -40,14 +45,46 @@ app.use(async (req, res, next) => {
     }
 });
 
-// Rotas - usando corretamente
-app.use('/aluno', alunoRoute);
-app.use('/grupo', grupoRoute);
-
-app.use(express.static('public'));
-
-app.get('/', (req, res) => {
-    res.sendFile('index.html', { root: 'public' });
+// Rota de health check
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        mongodb: mongoose.connection.readyState === 1 ? 'conectado' : 'desconectado'
+    });
 });
 
-module.exports = app;
+// Rota raiz
+app.get('/', (req, res) => {
+    res.json({
+        mensagem: 'API Backend - Grupo de Estudos',
+        endpoints: ['/aluno', '/grupo', '/health']
+    });
+});
+
+app.use(alunoRoute);
+app.use(grupoRoute);
+
+// Arquivos estáticos
+app.use(express.static('public'));
+
+// Middleware 404
+app.use((req, res) => {
+    res.status(404).json({
+        erro: 'Rota não encontrada',
+        path: req.url
+    });
+});
+
+// Middleware de erro global
+app.use((err, req, res, next) => {
+    console.error('Erro:', err);
+    res.status(500).json({
+        erro: 'Erro interno do servidor'
+    });
+});
+
+// Inicia o servidor
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+});
